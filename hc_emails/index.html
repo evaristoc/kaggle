@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+
+<head>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
+
+    <script src="http://ajax.aspnetcdn.com/ajax/jQuery/jquery-1.11.3.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.17/d3.min.js"></script>
+    <script src="https://d3js.org/d3.geo.projection.v0.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
+    <script src="https://d3js.org/topojson.v1.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.10.3/moment.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.8.3/underscore-min.js"></script>
+    <script src="js/chroniton.js"></script>
+    <style>
+        body {
+            /*background-color: #393939;*/
+            background-color: lightgrey;
+            /*font-size:9px;*/
+        }
+
+        path {
+            fill: none;
+            stroke: #333;
+            stroke-width: .5px;
+        }
+
+        .land-boundary {
+            stroke-width: 1px;
+        }
+
+        .county-boundary {
+            stroke: #ddd;
+        }
+
+        .site {
+            stroke-width: .5px;
+            stroke: #333;
+            fill: #9cf;
+        }
+
+        #slider3 {
+            /*position: absolute;
+            left: 50%;
+            margin-left: -300px;
+            bottom: 20px;
+            width: 600px;
+            height: 50px;*/
+            font-size: 10px;
+        }
+    </style>
+
+
+</head>
+
+<body>
+
+    <div class="jumbotron">
+        <h2>Countries in Hillary Clinton's Emails: Animation</h2>
+        <p style='text-align:right;'>single country appereances in some of the Hillary Clinton's emails, per month, Mar-09 / Jan-12</p><p style="font-size:9px;text-align:right;">(dataset available at <span><a href='https://www.kaggle.com/kaggle/hillary-clinton-emails'>kaggle</a></span>; dataset treated using <span><a href="https://github.com/evaristoc/kaggle/blob/master/hillary%20talks.ipynb">this procedure</a></span>) </p>
+    </div>
+    <div class="container">
+        <div class="row">
+            <div id="slider3"></div>
+        </div>
+    </div>
+    <br>
+    <script>
+        var width = 960,
+            height = 600;
+
+        var mapPath = 'https://raw.githubusercontent.com/krisgesling/d3-play/master/world-geo2-min.json';
+
+        //var mapPath = "/cmdoptesc/raw/4714c586f69425043ae3/us.json";
+
+        var projection = d3.geo.miller()
+            .scale(150)
+            .translate([width / 2, height / 2]);
+
+        var path = d3.geo.path()
+            .projection(projection);
+
+        var svg = d3.select("body").append("svg")
+            .attr("width", width)
+            .attr("height", height);
+
+
+            var data_source = "https://gist.githubusercontent.com/evaristoc/f495e4cd7c1287ba49d4904c15d11c81/raw/32b717ab0c8549813586426c520241bc2b361c69/hcm_kaggle.json"
+
+            d3.json(data_source, function(e, d){
+              window.country_data = d;
+            });
+
+        d3.json(mapPath, function(error, countries) {
+            if (error) return console.error(error);
+
+            var renderedPath = svg.selectAll('path')
+                .data(countries.features)
+                .enter()
+                .append('path')
+                .attr('d', path)
+                .style('fill', 'lightgreen')
+
+
+            var displaySites = function(data) {
+                renderedPath
+                    .style("fill", function(d) {
+                        //console.log("inside fill function ", data[0].ct);
+                        //console.log(data[0].ct.indexOf(d.id));
+                        //var assigncolor = data[0].ct.indexOf(d.id) != -1 ? 'blue' : null;
+                        var assigncolor = data.indexOf(d.id) != -1 ? 'steelblue' : 'lightgreen';
+                        return assigncolor;
+                        //console.log(data[0].ct.indexOf(d.id) != -1 ? 'blue' : null;);
+                    })
+
+            };
+
+            var site_data = country_data.map(function(d) {
+                return {
+                    //dt: moment(d.dt, "YYYY-MM-DD").unix(),
+                    dt: d.dt,
+                    ct: d.ct
+                }
+            })
+            var alldates = site_data.map(function(d) {
+                return d.dt;
+            });
+            //alldates.push(moment('2012-02-01', "YYYY MM DD").unix());
+            alldates.sort()
+                //console.log(alldates);
+                //var minDateUnix = moment('2009-03-01', "YYYY MM DD").unix();
+                //var maxDateUnix = moment('2012-01-01', "YYYY MM DD").unix();
+                //var secondsInDay = 60 * 60 * 24;
+                //var secondsInDay = 1000;
+                //var sliderScale = d3.time.scale().domain([new Date(2009, 3, 1), new Date(2012, 1, 1)]);
+                //var format = d3.time.format("%Y-%M-%D");
+
+            d3.select('#slider3')
+                .call(
+                    chroniton()
+                    .domain([new Date(2009, 2, 1), new Date(2012, 1, 1)])
+                    //.domain([minDateUnix, maxDateUnix])
+                    .width(900)
+                    .on('change', function(value) {
+                        if (newData) var newData = [];
+                        if (!newData) var newData;
+                        newData = _(site_data)
+                            .filter(function(site) {
+                                console.log('site ', moment(site.dt, "YYYY-MM-DD")._d, ' value ', value);
+                                return moment(alldates[alldates.indexOf(site.dt)], "YYYY-MM-DD")._d <= value & moment(alldates[alldates.indexOf(site.dt) + 1], "YYYY-MM-DD")._d > value
+                            })
+                        newData = _.flatten(newData.map(function(d) {
+                                return Object.keys(d.ct).length > 0 ? Object.keys(d.ct) : [];
+                            }))
+                            //console.log(newData);
+                        displaySites(newData);
+                    })
+                    .playButton(true) // (6)
+                    .playbackRate(0.2)
+                    .loop(true)
+                );
+            //});
+        });
+    </script>
+
+</body>
